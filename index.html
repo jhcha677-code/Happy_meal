@@ -22,7 +22,7 @@
             <p class="text-gray-500 text-lg font-medium">행복한 우리 가족을 위한 맛있는 제철 식단 가이드</p>
         </header>
 
-        <!-- 설정바: 테마 선택 기능 삭제 -->
+        <!-- 설정바 -->
         <div class="bg-white p-6 rounded-3xl shadow-sm mb-10 flex flex-wrap gap-8 items-center justify-between border border-pink-50">
             <div class="flex flex-wrap gap-6">
                 <div class="space-y-1">
@@ -68,10 +68,25 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        
+        // 사용자 제공 Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDFz-WoQv5OGMoT_IWFcINiTFZbYGvc77A",
+            authDomain: "happy-week-meal-plan.firebaseapp.com",
+            databaseURL: "https://happy-week-meal-plan-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "happy-week-meal-plan",
+            storageBucket: "happy-week-meal-plan.firebasestorage.app",
+            messagingSenderId: "1007625897764",
+            appId: "1:1007625897764:web:d41c908a7c7638863195b1"
+        };
+
+        let app, auth;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
+        }
+
         let viewDate = new Date();
         let selectedDayInfo = null;
         let randomSeed = Date.now();
@@ -81,48 +96,42 @@
             { name: "겨울 무 생채 비빔밥", type: "easy", baseIng: ["무", "쪽파", "달걀", "고춧가루"], ratios: { "1": 300, "2": 600, "4": 1200 }, steps: ["무를 일정한 굵기로 채 썰어 고춧가루 2큰술로 먼저 색을 입힙니다.", "멸치액젓, 식초, 설탕, 다진 마늘을 넣고 골고루 버무립니다.", "밥 위에 무생채를 듬뿍 올리고 반숙 달걀 프라이를 얹습니다.", "참기름과 깨를 뿌려 아삭한 식감을 살려 비벼 먹습니다."], tip: "무를 소금에 절이지 않아야 물이 덜 생기고 아삭합니다." },
             { name: "차돌박이 달래 된장찌개", type: "special", baseIng: ["차돌박이", "달래", "두부", "된장"], ratios: { "1": 100, "2": 200, "4": 400 }, steps: ["냄비에 차돌박이를 먼저 볶아 고소한 기름을 냅니다.", "쌀뜨물을 붓고 된장을 풀어 한소끔 팔팔 끓여줍니다.", "두부와 애호박, 고추를 넣고 5분 정도 더 끓여 맛을 냅니다.", "불을 끄기 1분 전 손질한 달래를 넣고 살짝만 익혀 향을 살립니다."], tip: "달래는 너무 오래 끓이면 질겨지므로 마지막에 넣으세요." },
             { name: "바삭한 알배기 배추전", type: "easy", baseIng: ["알배기 배추", "부침가루", "홍고추"], ratios: { "1": 5, "2": 10, "4": 20 }, steps: ["배추 줄기의 두꺼운 부분을 칼등으로 두드려 평평하게 만듭니다.", "부침가루와 찬물을 1:1 비율로 섞어 묽은 반죽물을 만듭니다.", "배추 잎에 반죽을 얇게 입힌 뒤 달궈진 팬에 올립니다.", "앞뒤로 노릇하고 바삭하게 구워 초간장을 곁들여 냅니다."], tip: "반죽물에 얼음을 한 알 넣으면 훨씬 바삭해집니다." },
-            { name: "매콤 닭볶음탕", type: "special", baseIng: ["토막닭", "감자", "양파", "청양고추"], ratios: { "1": 500, "2": 1000, "4": 1500 }, steps: ["닭을 끓는 물에 데쳐 불순물을 제거하고 찬물에 헹굽니다.", "냄비에 닭과 물, 간장 양념장을 넣고 감자와 함께 끓입니다.", "국물이 자작해지면 양파와 대파를 넣고 중불에서 졸입니다.", "감자가 완전히 익고 국물이 걸쭉해지면 완성입니다."], tip: "설탕을 먼저 넣어 고기를 연하게 만드는 것이 비법입니다." },
+            { name: "매콤 닭볶음탕", type: "special", baseIng: ["토막닭", "감자", "양파", "청양고추"], ratios: { "1": 500, "2": 1000, "4": 1500 }, steps: ["닭을 끓는 물에 데쳐 불순물을 제거하고 찬물에 헹겁니다.", "냄비에 닭과 물, 간장 양념장을 넣고 감자와 함께 끓입니다.", "국물이 자작해지면 양파와 대파를 넣고 중불에서 졸입니다.", "감자가 완전히 익고 국물이 걸쭉해지면 완성입니다."], tip: "설탕을 먼저 넣어 고기를 연하게 만드는 것이 비법입니다." },
             { name: "달콤 짭짤 소고기 장조림", type: "easy", baseIng: ["소고기 우둔살", "메추리알", "꽈리고추"], ratios: { "1": 200, "2": 400, "4": 800 }, steps: ["핏물을 뺀 소고기를 덩어리째 삶아낸 뒤 결대로 찢습니다.", "간장, 물, 설탕을 넣은 조림장에 고기를 넣고 졸입니다.", "삶은 메추리알을 넣고 색이 배어들 때까지 중약불에서 끓입니다.", "마지막에 꽈리고추를 넣어 향긋함을 더하고 불을 끕니다."], tip: "고기를 삶은 육수를 걸러 조림장에 쓰면 풍미가 깊습니다." },
             { name: "매콤 어묵 볶음", type: "easy", baseIng: ["사각어묵", "양파", "고춧가루", "간장"], ratios: { "1": 3, "2": 6, "4": 12 }, steps: ["어묵을 한입 크기로 썰고 양파는 굵게 채 썹니다.", "식용유를 두른 팬에 어묵과 양파를 넣고 노릇하게 볶습니다.", "간장, 고춧가루, 올리고당을 넣어 빠르게 양념을 입힙니다.", "불을 끄고 참기름과 통깨를 뿌려 고소하게 마무리합니다."], tip: "어묵을 뜨거운 물에 살짝 데쳐 사용하면 기름기가 제거됩니다." },
             { name: "소고기 버섯 전골", type: "special", baseIng: ["불고기용 고기", "표고버섯", "팽이버섯", "배추"], ratios: { "1": 150, "2": 300, "4": 600 }, steps: ["배추와 버섯들을 냄비 바닥에 가지런히 둘러 담습니다.", "가운데에 양념한 소고기를 올리고 멸치 육수를 붓습니다.", "보글보글 끓어오르면 거품을 걷어내며 깔끔하게 익힙니다.", "채소와 고기가 익으면 폰즈 소스에 찍어 담백하게 즐깁니다."], tip: "다양한 버섯을 넣을수록 국물 맛이 시원해집니다." },
             { name: "매콤 감자 조림", type: "easy", baseIng: ["감자", "고춧가루", "다진 마늘"], ratios: { "1": 2, "2": 4, "4": 8 }, steps: ["감자를 깍둑썰기하여 찬물에 담가 전분기를 제거합니다.", "팬에 식용유를 두르고 감자를 먼저 볶아 코팅합니다.", "물, 간장, 설탕, 고춧가루를 넣고 뚜껑을 덮어 익힙니다.", "국물이 졸아들면 꿀을 한 큰술 넣어 윤기를 냅니다."], tip: "감자를 볶은 뒤 졸여야 모양이 부서지지 않습니다." }
         ];
 
-        onAuthStateChanged(auth, (user) => {
-            if (!user) signInAnonymously(auth);
-            renderCalendar();
-        });
-
-        window.refreshSeedAndRender = function() {
-            randomSeed = Math.random();
-            selectedDayInfo = null;
-            document.getElementById('recipe-content').classList.add('hidden');
-            document.getElementById('recipe-content-placeholder').classList.remove('hidden');
-            renderCalendar();
-        };
-
         window.renderCalendar = function() {
             const container = document.getElementById('calendar-body');
+            if (!container) return;
             container.innerHTML = '';
             
             const year = viewDate.getFullYear();
             const month = viewDate.getMonth();
-            document.getElementById('calendar-title').innerText = `${month + 1}월 요리 일기`;
+            document.getElementById('calendar-title').innerText = `${year}년 ${month + 1}월`;
 
             const lastDate = new Date(year, month + 1, 0).getDate();
             const firstDay = new Date(year, month, 1).getDay();
 
             for (let i = 0; i < firstDay; i++) {
-                container.appendChild(document.createElement('div')).className = 'min-h-[110px] bg-pink-50/30 rounded-3xl opacity-30';
+                const empty = document.createElement('div');
+                empty.className = 'min-h-[110px] bg-pink-50/30 rounded-3xl opacity-30';
+                container.appendChild(empty);
             }
 
             for (let i = 1; i <= lastDate; i++) {
                 const day = document.createElement('div');
                 day.className = 'calendar-day rounded-3xl flex flex-col items-start';
                 day.dataset.day = i;
-                if (new Date().getDate() === i && new Date().getMonth() === month) day.classList.add('today');
+                
+                const today = new Date();
+                if (today.getDate() === i && today.getMonth() === month && today.getFullYear() === year) {
+                    day.classList.add('today');
+                }
 
-                const index = (Math.floor(Math.abs(Math.sin(i + randomSeed) * 10000))) % recipeDB.length;
+                const index = (Math.floor(Math.abs(Math.sin(i + (month * 31) + randomSeed) * 10000))) % recipeDB.length;
                 const menu = recipeDB[index];
                 
                 day.innerHTML = `<span class="text-sm font-black text-pink-200">${i}</span><div class="menu-label">${menu.name}</div>`;
@@ -134,44 +143,52 @@
             }
         };
 
+        window.refreshSeedAndRender = function() {
+            randomSeed = Math.random();
+            selectedDayInfo = null;
+            document.getElementById('recipe-content').classList.add('hidden');
+            document.getElementById('recipe-content-placeholder').classList.remove('hidden');
+            renderCalendar();
+        };
+
         function showRecipe(menu, target) {
             document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('active'));
-            if (target && target.classList) target.classList.add('active');
+            if (target) target.classList.add('active');
 
             const person = document.getElementById('person-option').value;
             const content = document.getElementById('recipe-content');
-            document.getElementById('recipe-content-placeholder').classList.add('hidden');
-            content.classList.remove('hidden');
+            const placeholder = document.getElementById('recipe-content-placeholder');
+            
+            if (placeholder) placeholder.classList.add('hidden');
+            if (content) {
+                content.classList.remove('hidden');
+                const amount = menu.ratios[person];
+                const unit = menu.name.includes("배추전") || menu.name.includes("어묵") || menu.name.includes("감자") ? "개/장" : "g";
 
-            const amount = menu.ratios[person];
-            const unit = menu.name.includes("배추전") || menu.name.includes("어묵") || menu.name.includes("감자") ? "개/장" : "g";
-
-            content.innerHTML = `
-                <div class="p-10">
-                    <h3 class="text-3xl font-black mb-6 text-gray-900 leading-tight">${menu.name}</h3>
-                    <div class="bg-rose-50/50 p-6 rounded-[2rem] mb-8 border border-rose-100">
-                        <p class="text-xs font-bold text-rose-300 mb-2 uppercase tracking-widest">장보기 목록 (${person}인분)</p>
-                        <p class="text-xl font-black text-rose-600">${menu.baseIng[0]} <span class="text-rose-400 font-medium text-lg">${amount}${unit}</span></p>
-                        <p class="text-sm text-rose-400 mt-2 font-medium">기타: ${menu.baseIng.slice(1).join(', ')}</p>
+                content.innerHTML = `
+                    <div class="p-10">
+                        <h3 class="text-3xl font-black mb-6 text-gray-900 leading-tight">${menu.name}</h3>
+                        <div class="bg-rose-50/50 p-6 rounded-[2rem] mb-8 border border-rose-100">
+                            <p class="text-xs font-bold text-rose-300 mb-2 uppercase tracking-widest">장보기 목록 (${person}인분)</p>
+                            <p class="text-xl font-black text-rose-600">${menu.baseIng[0]} <span class="text-rose-400 font-medium text-lg">${amount}${unit}</span></p>
+                            <p class="text-sm text-rose-400 mt-2 font-medium">기타: ${menu.baseIng.slice(1).join(', ')}</p>
+                        </div>
+                        <div class="space-y-6">
+                            <p class="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em] mb-2">요리 순서</p>
+                            ${menu.steps.map((s, i) => `
+                                <div class="flex gap-4">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-pink-500 text-white rounded-xl flex items-center justify-center text-xs font-black shadow-md shadow-pink-100">${i+1}</span>
+                                    <p class="text-[15px] text-gray-600 font-medium leading-[1.8]">${s}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="mt-10 p-5 bg-amber-50 border-l-4 border-amber-300 rounded-r-3xl">
+                            <p class="text-xs text-amber-800 leading-relaxed font-bold">💡 실패 없는 비결: ${menu.tip}</p>
+                        </div>
                     </div>
-                    <div class="space-y-6">
-                        <p class="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em] mb-2">요리 순서</p>
-                        ${menu.steps.map((s, i) => `
-                            <div class="flex gap-4">
-                                <span class="flex-shrink-0 w-6 h-6 bg-pink-500 text-white rounded-xl flex items-center justify-center text-xs font-black shadow-md shadow-pink-100">${i+1}</span>
-                                <p class="text-[15px] text-gray-600 font-medium leading-[1.8]">${s}</p>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="mt-10 p-5 bg-amber-50 border-l-4 border-amber-300 rounded-r-3xl">
-                        <p class="text-xs text-amber-800 leading-relaxed font-bold">💡 실패 없는 비결: ${menu.tip}</p>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         }
-
-        document.getElementById('prev-month').onclick = () => { viewDate.setMonth(viewDate.getMonth() - 1); selectedDayInfo = null; renderCalendar(); };
-        document.getElementById('next-month').onclick = () => { viewDate.setMonth(viewDate.getMonth() + 1); selectedDayInfo = null; renderCalendar(); };
 
         window.updateRecipeIfSelected = () => { 
             if (selectedDayInfo) {
@@ -179,6 +196,33 @@
                 showRecipe(selectedDayInfo.menu, activeEl); 
             }
         };
+
+        // 초기화 및 실행
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Firebase 인증 시도 (실패해도 앱 동작에 지장 없도록 처리)
+            if (auth) {
+                try {
+                    await signInAnonymously(auth);
+                    console.log("Authenticated successfully");
+                } catch (e) {
+                    console.warn("Auth failed, but continuing in local mode:", e.message);
+                }
+            }
+
+            // 캘린더 렌더링은 인증 여부와 관계없이 실행
+            renderCalendar();
+
+            document.getElementById('prev-month').onclick = () => { 
+                viewDate.setMonth(viewDate.getMonth() - 1); 
+                selectedDayInfo = null; 
+                renderCalendar(); 
+            };
+            document.getElementById('next-month').onclick = () => { 
+                viewDate.setMonth(viewDate.getMonth() + 1); 
+                selectedDayInfo = null; 
+                renderCalendar(); 
+            };
+        });
     </script>
 </body>
 </html>
