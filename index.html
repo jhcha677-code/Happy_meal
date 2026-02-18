@@ -20,25 +20,22 @@ import {
   Calendar as CalendarIcon, Loader2, ChefHat, Leaf, Users, Scale, Clock, Sparkles
 } from 'lucide-react';
 
-// --- Firebase 초기화 ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : {
-      apiKey: "AIzaSyDFz-WoQv5OGMoT_IWFcINiTFZbYGvc77A",
-      authDomain: "happy-week-meal-plan.firebaseapp.com",
-      databaseURL: "https://happy-week-meal-plan-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "happy-week-meal-plan",
-      storageBucket: "happy-week-meal-plan.firebasestorage.app",
-      messagingSenderId: "1007625897764",
-      appId: "1:1007625897764:web:d41c908a7c7638863195b1"
-    };
+// --- Firebase 초기화 (제공해주신 새로운 설정값 적용) ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAHZTCUutXeJpH5oNabUVa2a8A5me6PHQs",
+  authDomain: "happy-meal-63254.firebaseapp.com",
+  projectId: "happy-meal-63254",
+  storageBucket: "happy-meal-63254.firebasestorage.app",
+  messagingSenderId: "530213272185",
+  appId: "1:530213272185:web:1aa5fbb9f598e3dfb532a8"
+};
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'happy-meal-plan';
 
-// --- 12개월 전체 제철 레시피 데이터베이스 (상세 버전) ---
+// --- 12개월 전체 제철 레시피 데이터베이스 ---
 const FULL_SEASONAL_DB = {
   0: { // 1월
     ing: "굴, 매생이, 떡국떡, 무",
@@ -76,7 +73,7 @@ const FULL_SEASONAL_DB = {
   5: { // 6월
     ing: "장어, 감자, 매실장아찌",
     pool: [
-      { name: "장어 덮밥", items: [{n: "민물장어", q: 0.5, u: "마리"}, {n: "양념장", q: 2, u: "T"}, {n: "밥", q: 1, u: "공기"}], steps: ["장어를 앞뒤로 구우며 소스를 덧바릅니다.", "따뜻한 밥 위에 올려 냅니다."], tip: "생강채를 곁들이면 맛이 훨씬 깔끔해집니다." }
+      { name: "장어 덮밥", items: [{n: "민물장어", q: 0.5, u: "마리"}, {n: "양념장", q: 2, u: "T"}, {n: "밥", q: 1, u: "공기"}], steps: ["장어를 앞뒤로 구우며 소스를 덧발라 구워냅니다.", "따뜻한 밥 위에 올려 냅니다."], tip: "생강채를 곁들이면 맛이 훨씬 깔끔해집니다." }
     ]
   },
   6: { // 7월
@@ -140,7 +137,10 @@ export default function App() {
       }
     };
     initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => { setUser(u); setLoading(false); });
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
     return () => unsubscribe();
   }, []);
 
@@ -161,7 +161,11 @@ export default function App() {
 
   const selectedDayData = useMemo(() => calendarDays.find(d => d?.dateStr === selectedDate), [selectedDate, calendarDays]);
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen bg-rose-50"><Loader2 className="animate-spin text-pink-500" size={48} /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen bg-rose-50">
+      <Loader2 className="animate-spin text-pink-500" size={48} />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-rose-50 p-2 md:p-8 font-sans transition-all duration-500">
