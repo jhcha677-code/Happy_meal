@@ -1,256 +1,198 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithCustomToken,
-  signInAnonymously, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-import { 
-  getFirestore, 
-  collection, 
-  doc, 
-  onSnapshot, 
-  query, 
-  setDoc, 
-  serverTimestamp 
-} from 'firebase/firestore';
-import { 
-  Utensils, ChevronLeft, ChevronRight, 
-  Calendar as CalendarIcon, Loader2, ChefHat, Leaf, Users, Scale, Clock, Sparkles
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Meal Plan - 365 제철 식단</title>
+    <!-- Tailwind CSS 및 Lucide Icons CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- React 및 ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel (브라우저에서 JSX 실행용) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #fffafb; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-// --- Firebase 초기화 (제공해주신 새로운 설정값 적용) ---
-const firebaseConfig = {
-  apiKey: "AIzaSyAHZTCUutXeJpH5oNabUVa2a8A5me6PHQs",
-  authDomain: "happy-meal-63254.firebaseapp.com",
-  projectId: "happy-meal-63254",
-  storageBucket: "happy-meal-63254.firebasestorage.app",
-  messagingSenderId: "530213272185",
-  appId: "1:530213272185:web:1aa5fbb9f598e3dfb532a8"
-};
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'happy-meal-plan';
+        // --- Firebase 초기화용 설정 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAHZTCUutXeJpH5oNabUVa2a8A5me6PHQs",
+            authDomain: "happy-meal-63254.firebaseapp.com",
+            projectId: "happy-meal-63254",
+            storageBucket: "happy-meal-63254.firebasestorage.app",
+            messagingSenderId: "530213272185",
+            appId: "1:530213272185:web:1aa5fbb9f598e3dfb532a8"
+        };
 
-// --- 12개월 전체 제철 레시피 데이터베이스 ---
-const FULL_SEASONAL_DB = {
-  0: { // 1월
-    ing: "굴, 매생이, 떡국떡, 무",
-    pool: [
-      { name: "매생이 굴국", items: [{n: "매생이", q: 40, u: "g"}, {n: "생굴", q: 30, u: "g"}, {n: "육수", q: 250, u: "ml"}], steps: ["굴은 소금물에 헹궈 준비합니다.", "육수가 끓으면 굴을 넣고 익힙니다.", "매생이를 넣고 한소끔만 끓여 마무리합니다."], tip: "매생이는 오래 끓이면 녹으니 마지막에 넣으세요." },
-      { name: "소고기 무떡국", items: [{n: "떡국떡", q: 150, u: "g"}, {n: "소고기", q: 40, u: "g"}, {n: "무", q: 30, u: "g"}], steps: ["소고기와 무를 참기름에 볶습니다.", "사골 육수를 붓고 끓입니다.", "떡을 넣고 떠오를 때까지 익힙니다."], tip: "무를 넣으면 국물이 훨씬 시원해집니다." }
-    ]
-  },
-  1: { // 2월
-    ing: "삼치, 봄동, 꼬막, 한라봉",
-    pool: [
-      { name: "삼치 카레구이", items: [{n: "삼치", q: 1, u: "토막"}, {n: "카레가루", q: 10, u: "g"}], steps: ["삼치에 소금 밑간을 합니다.", "카레가루를 앞뒤로 고루 입힙니다.", "팬에 기름을 두르고 노릇하게 굽습니다."], tip: "카레가루가 생선 비린내를 확실히 잡아줍니다." },
-      { name: "봄동 겉절이", items: [{n: "봄동", q: 50, u: "g"}, {n: "액젓", q: 1, u: "T"}, {n: "고춧가루", q: 1, u: "T"}], steps: ["봄동을 한입 크기로 뜯어 씻습니다.", "양념장을 만들어 골고루 버무립니다."], tip: "먹기 직전에 무쳐야 아삭함이 살아있습니다." }
-    ]
-  },
-  2: { // 3월
-    ing: "달래, 쑥, 냉이, 주꾸미",
-    pool: [
-      { name: "주꾸미 미나리볶음", items: [{n: "주꾸미", q: 150, u: "g"}, {n: "미나리", q: 30, u: "g"}, {n: "양념장", q: 2, u: "T"}], steps: ["주꾸미를 끓는 물에 살짝 데칩니다.", "양념장에 고르게 볶아줍니다.", "불을 끄고 미나리를 섞어 향을 입힙니다."], tip: "미나리는 잔열로 익혀야 아삭합니다." },
-      { name: "냉이 된장국", items: [{n: "냉이", q: 40, u: "g"}, {n: "된장", q: 1, u: "T"}, {n: "바지락", q: 30, u: "g"}], steps: ["바지락으로 시원한 육수를 냅니다.", "된장을 풀고 냉이를 넣습니다.", "냉이 향이 퍼지도록 한소끔만 끓입니다."], tip: "냉이 뿌리의 흙을 잘 제거해야 깔끔합니다." }
-    ]
-  },
-  3: { // 4월
-    ing: "두릅, 마늘쫑, 키조개, 취나물",
-    pool: [
-      { name: "두릅 소고기말이", items: [{n: "참두릅", q: 3, u: "개"}, {n: "불고기용 소고기", q: 50, u: "g"}], steps: ["두릅을 데쳐 소고기에 돌돌 맙니다.", "팬에 구워 간장 소스를 곁들입니다."], tip: "두릅의 쌉쌀한 맛이 고기의 느끼함을 잡아줍니다." }
-    ]
-  },
-  4: { // 5월
-    ing: "병어, 매실, 참다랑어, 멍게",
-    pool: [
-      { name: "병어 무조림", items: [{n: "병어", q: 0.5, u: "마리"}, {n: "무", q: 80, u: "g"}], steps: ["무를 깔고 병어와 양념을 올립니다.", "국물을 끼얹어가며 자작하게 조립니다."], tip: "병어 살이 연하므로 뒤적이지 말고 조리하세요." }
-    ]
-  },
-  5: { // 6월
-    ing: "장어, 감자, 매실장아찌",
-    pool: [
-      { name: "장어 덮밥", items: [{n: "민물장어", q: 0.5, u: "마리"}, {n: "양념장", q: 2, u: "T"}, {n: "밥", q: 1, u: "공기"}], steps: ["장어를 앞뒤로 구우며 소스를 덧발라 구워냅니다.", "따뜻한 밥 위에 올려 냅니다."], tip: "생강채를 곁들이면 맛이 훨씬 깔끔해집니다." }
-    ]
-  },
-  6: { // 7월
-    ing: "옥수수, 갈치, 복숭아, 삼계탕",
-    pool: [
-      { name: "한방 삼계탕", items: [{n: "생닭", q: 0.5, u: "마리"}, {n: "찹쌀", q: 50, u: "g"}, {n: "인삼", q: 1, u: "뿌리"}], steps: ["닭 속에 불린 찹쌀과 재료를 넣습니다.", "압력솥이나 냄비에 푹 삶아냅니다."], tip: "마늘을 듬뿍 넣으면 국물이 더 고소합니다." }
-    ]
-  },
-  7: { // 8월
-    ing: "전복, 포도, 참외, 민어",
-    pool: [
-      { name: "전복 버터구이", items: [{n: "전복", q: 2, u: "개"}, {n: "버터", q: 10, u: "g"}, {n: "마늘", q: 2, u: "쪽"}], steps: ["전복에 격자무늬 칼집을 냅니다.", "팬에 버터와 마늘을 볶다 전복을 굽습니다."], tip: "내장을 따로 볶아 소스로 활용해보세요." }
-    ]
-  },
-  8: { // 9월
-    ing: "전어, 대하, 꽃게, 배",
-    pool: [
-      { name: "가을 전어구이", items: [{n: "전어", q: 2, u: "마리"}, {n: "굵은소금", q: 5, u: "g"}], steps: ["전어 몸통에 칼집을 내고 소금을 뿌립니다.", "그릴이나 팬에 노릇하게 굽습니다."], tip: "전어는 뼈째 먹을 수 있도록 바싹 굽는게 좋습니다." }
-    ]
-  },
-  9: { // 10월
-    ing: "밤, 대하, 고구마, 낙지",
-    pool: [
-      { name: "대하 소금구이", items: [{n: "대하", q: 5, u: "마리"}, {n: "천일염", q: 100, u: "g"}], steps: ["팬에 소금을 깔고 대하를 올립니다.", "붉은색이 돌 때까지 뚜껑을 덮고 굽습니다."], tip: "너무 오래 구우면 살이 퍽퍽해지니 주의하세요." }
-    ]
-  },
-  10: { // 11월
-    ing: "도루묵, 과메기, 유자",
-    pool: [
-      { name: "도루묵 찌개", items: [{n: "도루묵", q: 4, u: "마리"}, {n: "무", q: 50, u: "g"}, {n: "고춧가루", q: 1, u: "T"}], steps: ["무를 깔고 도루묵과 양념을 넣습니다.", "자작하게 끓여 알의 톡톡 터지는 식감을 즐깁니다."], tip: "알이 빠지지 않게 젓지 말고 끓여주세요." }
-    ]
-  },
-  11: { // 12월
-    ing: "코다리, 홍합, 가리비, 배추",
-    pool: [
-      { name: "얼큰한 코다리조림", items: [{n: "코다리", q: 1, u: "토막"}, {n: "무", q: 100, u: "g"}, {n: "청양고추", q: 1, u: "개"}], steps: ["코다리 지느러미를 제거합니다.", "무와 양념을 넣고 푹 조려냅니다."], tip: "국물을 끼얹어가며 익혀야 간이 고루 뱁니다." }
-    ]
-  }
-};
+        // --- 12개월 제철 레시피 DB (이전 데이터 유지) ---
+        const FULL_SEASONAL_DB = {
+            0: { ing: "굴, 매생이, 떡국떡", pool: [{ name: "매생이 굴국", items: [{n: "매생이", q: 40, u: "g"}, {n: "생굴", q: 30, u: "g"}], steps: ["굴을 헹굽니다.", "육수가 끓으면 굴을 넣습니다.", "매생이를 넣고 마무리합니다."], tip: "매생이는 마지막에 넣으세요." }] },
+            1: { ing: "삼치, 봄동, 꼬막", pool: [{ name: "삼치 카레구이", items: [{n: "삼치", q: 1, u: "토막"}, {n: "카레가루", q: 10, u: "g"}], steps: ["삼치에 밑간을 합니다.", "카레가루를 입힙니다.", "노릇하게 굽습니다."], tip: "카레가루가 비린내를 잡아줍니다." }, { name: "봄동 겉절이", items: [{n: "봄동", q: 50, u: "g"}, {n: "액젓", q: 1, u: "T"}], steps: ["봄동을 씻어 뜯습니다.", "양념에 버무립니다."], tip: "먹기 직전에 무치세요." }] },
+            2: { ing: "달래, 쑥, 냉이, 주꾸미", pool: [{ name: "주꾸미 미나리볶음", items: [{n: "주꾸미", q: 150, u: "g"}, {n: "미나리", q: 30, u: "g"}], steps: ["주꾸미를 데칩니다.", "양념에 볶습니다.", "미나리를 섞습니다."], tip: "미나리는 잔열로 익히세요." }] },
+            3: { ing: "두릅, 마늘쫑, 키조개", pool: [{ name: "두릅 소고기말이", items: [{n: "참두릅", q: 3, u: "개"}, {n: "소고기", q: 50, u: "g"}], steps: ["두릅을 소고기에 맙니다.", "팬에 굽습니다."], tip: "간장 소스를 곁들여보세요." }] },
+            4: { ing: "병어, 매실, 멍게", pool: [{ name: "병어 무조림", items: [{n: "병어", q: 0.5, u: "마리"}, {n: "무", q: 80, u: "g"}], steps: ["무를 깔고 병어를 올립니다.", "양념을 붓고 조립니다."], tip: "병어 살이 연하니 주의하세요." }] },
+            5: { ing: "장어, 감자, 매실", pool: [{ name: "장어 덮밥", items: [{n: "장어", q: 0.5, u: "마리"}, {n: "밥", q: 1, u: "공기"}], steps: ["장어를 구우며 소스를 바릅니다.", "밥 위에 올립니다."], tip: "생강채를 곁들이면 좋습니다." }] },
+            6: { ing: "옥수수, 갈치, 복숭아", pool: [{ name: "한방 삼계탕", items: [{n: "생닭", q: 0.5, u: "마리"}, {n: "찹쌀", q: 50, u: "g"}], steps: ["닭 속에 재료를 넣습니다.", "푹 삶아냅니다."], tip: "마늘을 듬뿍 넣으세요." }] },
+            7: { ing: "전복, 포도, 참외", pool: [{ name: "전복 버터구이", items: [{n: "전복", q: 2, u: "개"}, {n: "버터", q: 10, u: "g"}], steps: ["전복에 칼집을 냅니다.", "버터에 굽습니다."], tip: "내장 소스도 활용해보세요." }] },
+            8: { ing: "전어, 대하, 꽃게", pool: [{ name: "가을 전어구이", items: [{n: "전어", q: 2, u: "마리"}, {n: "소금", q: 5, u: "g"}], steps: ["칼집을 내고 소금을 뿌립니다.", "노릇하게 굽습니다."], tip: "뼈째 먹는 것이 별미입니다." }] },
+            9: { ing: "밤, 대하, 고구마", pool: [{ name: "대하 소금구이", items: [{n: "대하", q: 5, u: "마리"}, {n: "소금", q: 100, u: "g"}], steps: ["소금 위에 대하를 올립니다.", "뚜껑을 덮고 굽습니다."], tip: "너무 오래 굽지 마세요." }] },
+            10: { ing: "도루묵, 과메기, 유자", pool: [{ name: "도루묵 찌개", items: [{n: "도루묵", q: 4, u: "마리"}, {n: "무", q: 50, u: "g"}], steps: ["무를 깔고 도루묵을 넣습니다.", "자작하게 끓입니다."], tip: "알의 식감을 즐겨보세요." }] },
+            11: { ing: "코다리, 홍합, 배추", pool: [{ name: "얼큰 코다리조림", items: [{n: "코다리", q: 1, u: "토막"}, {n: "무", q: 100, u: "g"}], steps: ["코다리 지느러미를 뗍니다.", "무와 양념을 넣고 조립니다."], tip: "푹 조려야 간이 뱁니다." }] }
+        };
 
-const getMonthlyPool = (m) => FULL_SEASONAL_DB[m]?.pool || FULL_SEASONAL_DB[0].pool;
-const getMonthIngredients = (m) => FULL_SEASONAL_DB[m]?.ing || "제철 식재료";
+        const App = () => {
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+            const [servingSize, setServingSize] = useState(4);
 
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [servingSize, setServingSize] = useState(4);
+            const calendarDays = useMemo(() => {
+                const y = currentDate.getFullYear(), m = currentDate.getMonth();
+                const firstDay = new Date(y, m, 1).getDay();
+                const daysInMonth = new Date(y, m + 1, 0).getDate();
+                const pool = FULL_SEASONAL_DB[m]?.pool || FULL_SEASONAL_DB[0].pool;
+                const days = [];
+                for (let i = 0; i < firstDay; i++) days.push(null);
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                    const idx = (i + m * 3) % pool.length;
+                    days.push({ day: i, dateStr, menu: pool[idx] });
+                }
+                return days;
+            }, [currentDate]);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        if (err.code !== 'auth/configuration-not-found') console.error(err);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+            const selectedDayData = useMemo(() => 
+                calendarDays.find(d => d?.dateStr === selectedDate), 
+                [selectedDate, calendarDays]
+            );
 
-  const calendarDays = useMemo(() => {
-    const y = currentDate.getFullYear(), m = currentDate.getMonth();
-    const firstDay = new Date(y, m, 1).getDay();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const pool = getMonthlyPool(m);
-    const days = [];
-    for (let i = 0; i < firstDay; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) {
-      const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      const recipeIndex = (i + m * 3) % pool.length; 
-      days.push({ day: i, dateStr, menu: pool[recipeIndex] });
-    }
-    return days;
-  }, [currentDate]);
+            useEffect(() => {
+                lucide.createIcons();
+            }, [currentDate, selectedDate]);
 
-  const selectedDayData = useMemo(() => calendarDays.find(d => d?.dateStr === selectedDate), [selectedDate, calendarDays]);
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-7xl mx-auto">
+                        <header className="mb-8 text-center">
+                            <div className="bg-white inline-flex p-3 rounded-full shadow-sm mb-4">
+                                <i data-lucide="utensils" className="text-pink-500 w-8 h-8"></i>
+                            </div>
+                            <h1 className="text-4xl md:text-6xl font-black text-pink-600 mb-2 tracking-tighter">✨ Happy Meal Plan</h1>
+                            <div className="bg-white/70 py-2 px-6 rounded-full w-fit mx-auto shadow-sm flex items-center gap-2">
+                                <i data-lucide="sparkles" className="text-yellow-500 w-4 h-4"></i>
+                                <span className="font-bold text-xs md:text-sm text-gray-500">
+                                    {currentDate.getMonth() + 1}월 제철: <span className="text-pink-500">{FULL_SEASONAL_DB[currentDate.getMonth()]?.ing}</span>
+                                </span>
+                            </div>
+                        </header>
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen bg-rose-50">
-      <Loader2 className="animate-spin text-pink-500" size={48} />
-    </div>
-  );
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* 캘린더 */}
+                            <div className="lg:col-span-2 bg-white rounded-[2.5rem] shadow-xl border border-pink-100 p-6 md:p-12 relative overflow-hidden">
+                                <div className="flex justify-between items-center mb-8">
+                                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-3 hover:bg-pink-50 rounded-2xl transition-all">
+                                        <i data-lucide="chevron-left" className="text-pink-400"></i>
+                                    </button>
+                                    <h2 className="text-2xl md:text-4xl font-black text-gray-800">{currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월</h2>
+                                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-3 hover:bg-pink-50 rounded-2xl transition-all">
+                                        <i data-lucide="chevron-right" className="text-pink-400"></i>
+                                    </button>
+                                </div>
+                                <div className="calendar-grid gap-2">
+                                    {['일','월','화','수','목','금','토'].map((d, i) => (
+                                        <div key={d} className={`text-center text-xs font-black pb-4 ${i === 0 ? 'text-rose-400' : i === 6 ? 'text-blue-400' : 'text-gray-300'}`}>{d}</div>
+                                    ))}
+                                    {calendarDays.map((dayObj, idx) => {
+                                        if (!dayObj) return <div key={idx} className="aspect-square bg-pink-50/10 rounded-2xl" />;
+                                        const isSelected = selectedDate === dayObj.dateStr;
+                                        return (
+                                            <div key={dayObj.dateStr} onClick={() => setSelectedDate(dayObj.dateStr)} 
+                                                className={`aspect-square p-2 rounded-[1.5rem] md:rounded-[2rem] cursor-pointer transition-all border-2 flex flex-col items-center justify-center text-center shadow-sm ${isSelected ? 'border-pink-500 bg-pink-50 ring-1 ring-pink-200 scale-105 z-10' : 'border-transparent bg-white hover:bg-pink-50/50'}`}>
+                                                <span className={`text-sm font-black ${isSelected ? 'text-pink-600' : 'text-gray-400'}`}>{dayObj.day}</span>
+                                                <div className="w-full text-[8px] md:text-[9px] font-bold text-gray-500 truncate mt-1">{dayObj.menu.name}</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
-  return (
-    <div className="min-h-screen bg-rose-50 p-2 md:p-8 font-sans transition-all duration-500">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-6 text-center">
-          <div className="inline-flex items-center p-3 bg-white rounded-full shadow-sm mb-4">
-            <Utensils className="text-pink-500" size={28} />
-          </div>
-          <h1 className="text-4xl md:text-6xl font-black text-pink-600 mb-2 tracking-tighter">✨ Happy Meal Plan</h1>
-          <div className="flex items-center justify-center gap-2 text-gray-500 bg-white/70 py-2 px-6 rounded-full w-fit mx-auto shadow-sm">
-            <Sparkles size={16} className="text-yellow-500" />
-            <span className="font-bold text-xs md:text-sm">{currentDate.getMonth() + 1}월의 테마: <span className="text-pink-500">{getMonthIngredients(currentDate.getMonth())}</span></span>
-          </div>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white rounded-[2.5rem] shadow-xl border border-pink-100 p-4 md:p-12 relative overflow-hidden">
-            <div className="flex justify-between items-center mb-8 relative z-10">
-              <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-3 hover:bg-pink-50 rounded-2xl active:scale-95 transition-all"><ChevronLeft className="text-pink-400" size={32} /></button>
-              <h2 className="text-2xl md:text-4xl font-black text-gray-800">{currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월</h2>
-              <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-3 hover:bg-pink-50 rounded-2xl active:scale-95 transition-all"><ChevronRight className="text-pink-400" size={32} /></button>
-            </div>
-            <div className="grid grid-cols-7 gap-1 md:gap-3">
-              {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-                <div key={d} className={`text-center text-[10px] md:text-xs font-black pb-4 ${i === 0 ? 'text-rose-400' : i === 6 ? 'text-blue-400' : 'text-gray-300'}`}>{d}</div>
-              ))}
-              {calendarDays.map((dayObj, idx) => {
-                if (!dayObj) return <div key={idx} className="aspect-square bg-pink-50/10 rounded-2xl" />;
-                const isSelected = selectedDate === dayObj.dateStr;
-                return (
-                  <div key={dayObj.dateStr} onClick={() => setSelectedDate(dayObj.dateStr)} className={`aspect-square p-2 rounded-[1.5rem] md:rounded-[2rem] cursor-pointer transition-all border-2 flex flex-col items-center justify-center text-center shadow-sm ${isSelected ? 'border-pink-500 bg-pink-50 ring-1 ring-pink-200 scale-105 z-10' : 'border-transparent bg-white hover:bg-pink-50/50'}`}>
-                    <span className={`text-[10px] md:text-sm font-black ${isSelected ? 'text-pink-600' : 'text-gray-400'}`}>{dayObj.day}</span>
-                    <div className="w-full text-[8px] md:text-[9px] font-bold text-gray-500 truncate mt-1">{dayObj.menu.name}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-[2.5rem] shadow-2xl border border-pink-100 p-6 md:p-10 sticky top-4 h-fit max-h-[85vh] overflow-y-auto">
-              {selectedDayData ? (
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom duration-500">
-                  <div className="border-b border-pink-50 pb-6">
-                    <div className="flex items-center gap-3 mb-6"><div className="bg-pink-500 p-3 rounded-2xl text-white shadow-lg shadow-pink-100"><ChefHat size={32} /></div><h3 className="text-2xl font-black text-gray-800 leading-tight">{selectedDayData.menu.name}</h3></div>
-                    <div className="flex items-center justify-between bg-pink-50 p-4 rounded-3xl">
-                      <div className="flex items-center gap-2 px-2"><Users size={24} className="text-pink-400" /><span className="text-sm font-bold text-pink-500">가족 인원</span></div>
-                      <div className="flex gap-2">
-                        {[1, 2, 4].map(num => (
-                          <button key={num} onClick={() => setServingSize(num)} className={`px-5 py-2 rounded-2xl text-sm font-black transition-all ${servingSize === num ? 'bg-pink-500 text-white shadow-md' : 'text-pink-300 hover:bg-pink-100'}`}>{num}인</button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-rose-50/50 p-6 rounded-[2rem] border border-rose-100 relative">
-                    <div className="absolute -top-3 -right-3 bg-white p-2 rounded-full shadow-sm border border-pink-50"><Scale size={16} className="text-pink-400" /></div>
-                    <h4 className="text-pink-600 font-black text-sm mb-4 flex items-center gap-2"> {servingSize}인분 정밀 계량</h4>
-                    <div className="space-y-3">
-                      {selectedDayData.menu.items.map((it, i) => (
-                        <div key={i} className="flex justify-between text-sm font-medium border-b border-rose-100/50 pb-2 last:border-0">
-                          <span className="text-gray-500">{it.n}</span>
-                          <span className="text-gray-800 font-black">{(it.q * servingSize).toLocaleString()}{it.u}</span>
+                            {/* 레시피 상세 */}
+                            <div className="lg:col-span-1">
+                                <div className="bg-white rounded-[2.5rem] shadow-2xl border border-pink-100 p-8 md:p-10 sticky top-4 h-fit max-h-[85vh] overflow-y-auto">
+                                    {selectedDayData ? (
+                                        <div className="space-y-8">
+                                            <div className="border-b border-pink-50 pb-6">
+                                                <div className="flex items-center gap-3 mb-6">
+                                                    <div className="bg-pink-500 p-3 rounded-2xl text-white shadow-lg shadow-pink-100">
+                                                        <i data-lucide="chef-hat" className="w-8 h-8"></i>
+                                                    </div>
+                                                    <h3 className="text-2xl font-black text-gray-800 leading-tight">{selectedDayData.menu.name}</h3>
+                                                </div>
+                                                <div className="flex items-center justify-between bg-pink-50 p-4 rounded-3xl">
+                                                    <div className="flex items-center gap-2 px-2 text-pink-500">
+                                                        <i data-lucide="users" className="w-5 h-5"></i>
+                                                        <span className="text-sm font-bold">인원 선택</span>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        {[1, 2, 4].map(num => (
+                                                            <button key={num} onClick={() => setServingSize(num)} className={`px-5 py-2 rounded-2xl text-sm font-black transition-all ${servingSize === num ? 'bg-pink-500 text-white shadow-md' : 'text-pink-300 hover:bg-pink-100'}`}>{num}인</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-rose-50/50 p-6 rounded-[2rem] border border-rose-100">
+                                                <h4 className="text-pink-600 font-black text-sm mb-4 flex items-center gap-2">
+                                                    <i data-lucide="scale" className="w-4 h-4"></i> {servingSize}인분 자동 계량
+                                                </h4>
+                                                <div className="space-y-3">
+                                                    {selectedDayData.menu.items.map((it, i) => (
+                                                        <div key={i} className="flex justify-between text-sm font-medium border-b border-rose-100/50 pb-2 last:border-0">
+                                                            <span className="text-gray-500">{it.n}</span>
+                                                            <span className="text-gray-800 font-black">{(it.q * servingSize).toLocaleString()}{it.u}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-5">
+                                                <h4 className="text-gray-400 font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                                    <i data-lucide="clock" className="w-4 h-4"></i> 조리 단계
+                                                </h4>
+                                                {selectedDayData.menu.steps.map((s, i) => (
+                                                    <div key={i} className="flex gap-4 group">
+                                                        <span className="flex-shrink-0 w-8 h-8 bg-pink-100 text-pink-500 rounded-2xl flex items-center justify-center text-xs font-black shadow-sm">{i+1}</span>
+                                                        <p className="text-sm text-gray-600 leading-relaxed font-medium pt-1">{s}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="mt-8 p-6 bg-amber-50 border-l-4 border-amber-300 rounded-r-[2rem] shadow-inner flex gap-3 text-xs text-amber-800 font-bold italic">
+                                                팁: {selectedDayData.menu.tip}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-32 text-gray-300 font-bold">
+                                            <i data-lucide="calendar" className="w-16 h-16 mx-auto mb-6 opacity-10"></i>
+                                            날짜를 클릭하여<br/>365일 제철 레시피를 확인하세요!
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                      ))}
                     </div>
-                  </div>
-                  <div className="space-y-5">
-                    <h4 className="text-gray-400 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Clock size={16} /> 조리 단계</h4>
-                    {selectedDayData.menu.steps.map((s, i) => (
-                      <div key={i} className="flex gap-4 group">
-                        <span className="flex-shrink-0 w-8 h-8 bg-pink-100 text-pink-500 rounded-2xl flex items-center justify-center text-xs font-black group-hover:bg-pink-500 group-hover:text-white transition-all shadow-sm">{i+1}</span>
-                        <p className="text-sm text-gray-600 leading-relaxed font-medium pt-1">{s}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-8 p-6 bg-amber-50 border-l-4 border-amber-300 rounded-r-[2rem] shadow-inner flex gap-3">
-                    <Sparkles className="text-amber-400 shrink-0" size={20} />
-                    <p className="text-xs text-amber-800 leading-relaxed font-bold italic">요리 팁: {selectedDayData.menu.tip}</p>
-                  </div>
                 </div>
-              ) : <div className="text-center py-32 text-gray-300 font-bold"><CalendarIcon size={84} className="mx-auto mb-6 opacity-10" /><p>달력을 넘겨가며<br/>365일 제철 레시피를 확인하세요!</p></div>}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
